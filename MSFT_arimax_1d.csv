@@ -1,0 +1,2 @@
+date,actual,forecast,ticker,model,horizon
+2020-11-02,202.3300018310547,202.92627925449938,MSFT,arimax,1
