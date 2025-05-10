@@ -59,7 +59,9 @@ if dfs:
     # plot forecast chart
     st.subheader(f"Forecast Comparison for {ticker}")
 
-    cols_to_plot = ['close'] + forecast_cols
+    # renaming 'close' column so looks better in legend
+    merged_df = merged_df.rename(columns={'close': 'Actual Close Price'})
+    cols_to_plot = ['Actual Close Price'] + forecast_cols
     hover_cols = []
     if 'daily_sentiment' in merged_df.columns:
         hover_cols.append('daily_sentiment')
