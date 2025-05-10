@@ -11,7 +11,7 @@ tickers = ['AAPL', 'AMZN', 'TSLA', 'MSFT', 'BA']
 ticker = st.selectbox("Choose a company to explore:", tickers)
 
 # Plot options for forecasts
-models = ['lstm', 'arima', 'arimax', 'sarimax', 'xgboost']
+models = ['lstm', 'arima', 'arimax', 'xgboost']
 horizons = [1, 3, 7]
 
 # Forecast plot
