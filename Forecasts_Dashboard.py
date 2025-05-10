@@ -6,78 +6,99 @@ import os
 st.set_page_config(page_title="Stock Forecast Dashboard", layout="wide")
 st.title("Stock Forecast Dashboard")
 
-# Ticker options-
+# Ticker dropdown for main chart
 tickers = ['AAPL', 'AMZN', 'TSLA', 'MSFT', 'BA']
 ticker = st.selectbox("Choose a company to explore:", tickers)
 
-# Plot options for forecasts
+# Forecast plot per company with toggled models
 models = ['lstm', 'arima', 'arimax', 'xgboost']
 horizons = [1, 3, 7]
 
-# Forecast plot
-st.subheader(f"Forecasts for {ticker}")
+# load all relevant forecast files for the company
+dfs = []
+forecast_cols = []
+max_forecast_date = None
+
 for model in models:
     for horizon in horizons:
         file_path = f"forecast_exports/{ticker}_{model}_{horizon}d_full.csv"
         if os.path.exists(file_path):
-            try:
-                df = pd.read_csv(file_path, parse_dates=['date'])
-            except Exception as e:
-                st.error(f"Error reading {file_path}: {e}")
-                continue
+            df = pd.read_csv(file_path, parse_dates=['date'])
 
-            cols_to_plot = ['close']
             forecast_col = f"{model}_{horizon}d"
             if forecast_col in df.columns:
-                cols_to_plot.append(forecast_col)
+                if df.empty:
+                    continue
+                df = df[['date', 'close'] + [forecast_col] +
+                        [col for col in ['daily_sentiment', 'weekly_sentiment'] if col in df.columns]]
+                dfs.append(df)
+                forecast_cols.append(forecast_col)
 
-            # Tooltips with sentiment
-            hover_data = {}
-            if 'daily_sentiment' in df.columns:
-                hover_data['daily_sentiment'] = True
-            elif 'weekly_sentiment' in df.columns:
-                hover_data['weekly_sentiment'] = True
+                # Track latest forecast date
+                last_forecast_date = df[df[forecast_col].notna()]['date'].max()
+                if last_forecast_date:
+                    if max_forecast_date is None or last_forecast_date > max_forecast_date:
+                        max_forecast_date = last_forecast_date
 
-            fig = px.line(
-                df,
-                x='date',
-                y=cols_to_plot,
-                title=f"{ticker} - {model.upper()} Forecast ({horizon}-Day)",
-                labels={'value': 'Price', 'variable': 'Series'},
-                template='plotly_white',
-                hover_data=hover_data if hover_data else None
-            )
-            fig.update_traces(mode='lines+markers')
-            fig.update_layout(hovermode='x unified')
-            st.plotly_chart(fig, use_container_width=True)
+# Merge & truncate to latest forecast date so no more "floating" forecasts
+if dfs:
+    merged_df = pd.concat(dfs).drop_duplicates('date').sort_values('date')
+    merged_df = merged_df.set_index('date')
+    merged_df = merged_df[~merged_df.index.duplicated(keep='first')]
+    merged_df = merged_df.reset_index()
 
-# Sentiment plot
+    if max_forecast_date:
+        merged_df = merged_df[merged_df['date'] <= max_forecast_date]
+
+    # plotting forecast comparison
+    st.subheader(f"Forecast Comparison for {ticker}")
+    cols_to_plot = ['close'] + forecast_cols
+    hover_cols = []
+    if 'daily_sentiment' in merged_df.columns:
+        hover_cols.append('daily_sentiment')
+    elif 'weekly_sentiment' in merged_df.columns:
+        hover_cols.append('weekly_sentiment')
+
+    fig = px.line(
+        merged_df,
+        x='date',
+        y=cols_to_plot,
+        title=f"{ticker} Stock & Forecasts (Toggle in legend)",
+        labels={'value': 'Price', 'variable': 'Series'},
+        hover_data=hover_cols if hover_cols else None,
+        template='plotly_white'
+    )
+    fig.update_traces(mode='lines+markers')
+    fig.update_layout(hovermode='x unified')
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.info("No forecast data found for this ticker.")
+
+# optional Sentiment Plot
 st.subheader(f"Sentiment Trend for {ticker}")
-show_sentiment_plot = st.checkbox("Show sentiment trend chart", value=False)
+show_sentiment_plot = st.checkbox("Show sentiment chart", value=False)
 
 if show_sentiment_plot:
-    sentiment_cols = ['daily_sentiment', 'weekly_sentiment']
-    sentiment_file = None
+    sentiment_path = None
     for model in models:
         for horizon in horizons:
             path = f"forecast_exports/{ticker}_{model}_{horizon}d_full.csv"
             if os.path.exists(path):
-                df = pd.read_csv(path, parse_dates=['date'])
-                for col in sentiment_cols:
-                    if col in df.columns:
-                        sentiment_file = df[['date', col]]
-                        sentiment_file = sentiment_file.dropna().drop_duplicates()
-                        sentiment_file = sentiment_file.rename(columns={col: 'sentiment'})
+                df_sent = pd.read_csv(path, parse_dates=['date'])
+                for col in ['daily_sentiment', 'weekly_sentiment']:
+                    if col in df_sent.columns:
+                        sentiment_path = df_sent[['date', col]].dropna().drop_duplicates()
+                        sentiment_path = sentiment_path.rename(columns={col: 'sentiment'})
                         break
-                if sentiment_file is not None:
+                if sentiment_path is not None:
                     break
 
-    if sentiment_file is not None and not sentiment_file.empty:
+    if sentiment_path is not None:
         fig_sent = px.line(
-            sentiment_file,
+            sentiment_path,
             x='date',
             y='sentiment',
-            title=f"{ticker} Sentiment Trend",
+            title=f"{ticker} Sentiment Over Time",
             labels={'sentiment': 'Sentiment Score'},
             template='plotly_white'
         )
@@ -85,18 +106,31 @@ if show_sentiment_plot:
         fig_sent.update_layout(hovermode='x unified')
         st.plotly_chart(fig_sent, use_container_width=True)
     else:
-        st.info("No sentiment data available for this ticker.")
+        st.info("No sentiment data found.")
 
-# RMSE Table
-st.subheader(f"RMSE Scores for {ticker}")
+# RMSE Table with option to choose multiple tickers/models/horizons 
+st.subheader("RMSE Comparison Table")
+
 rmse_path = "forecast_exports/rmse_summary.csv"
 if os.path.exists(rmse_path):
     df_rmse = pd.read_csv(rmse_path)
-    filtered_rmse = df_rmse[df_rmse['ticker'] == ticker]
-    st.dataframe(filtered_rmse)
+
+    # filters
+    rmse_tickers = st.multiselect("Filter by Ticker", tickers, default=tickers)
+    rmse_models = st.multiselect("Filter by Model", models, default=models)
+    rmse_horizons = st.multiselect("Filter by Horizon (days)", horizons, default=horizons)
+
+    #apply filters
+    filtered = df_rmse[
+        df_rmse['ticker'].isin(rmse_tickers) &
+        df_rmse['model'].isin(rmse_models) &
+        df_rmse['horizon'].isin(rmse_horizons)
+    ]
+    st.dataframe(filtered)
 else:
     st.warning("RMSE summary file not found.")
 
-#footer
+# footer
 st.markdown("---")
-st.caption("Orla Kavanagh CA2 | CCT MSc Data Analytics")
+st.caption("Orla Kavanagh's CA2 | CCT MSc Data Analytics")
+
