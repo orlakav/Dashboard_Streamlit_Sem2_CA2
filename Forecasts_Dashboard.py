@@ -43,9 +43,15 @@ for model in models:
 
 # merge forecasts and truncate stock data
 if dfs:
-    merged_df = pd.concat(dfs, axis=1)
-    merged_df = merged_df.loc[~merged_df.index.duplicated(keep='first')]
-    merged_df.reset_index(inplace=True)
+    base_df = dfs[0][['close']].copy()
+    base_df.index = dfs[0].index  # set same index
+
+    for df in dfs:
+        for col in df.columns:
+            if col not in base_df.columns and col != 'close':
+                base_df[col] = df[col]
+#converting index back to column for Plotly
+    merged_df = base_df.reset_index()
 
     if max_forecast_date:
         merged_df = merged_df[merged_df['date'] <= max_forecast_date]
