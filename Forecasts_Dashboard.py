@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+import glob
 
 st.set_page_config(page_title="Stock Forecast Dashboard", layout="wide")
 st.title("Stock Forecast Dashboard")
@@ -20,11 +21,16 @@ max_forecast_date = None
 # loading all relevant forecast files
 for model in models:
     for horizon in horizons:
-        file_path = f"forecast_exports/{ticker}_{model}_{horizon}d_full.csv"
-        if os.path.exists(file_path):
+        file_paths = glob.glob(f"forecast_exports/{ticker}_{model}_{horizon}d_full*.csv")
+        for file_path in file_paths:
             df = pd.read_csv(file_path, parse_dates=['date'])
 
             forecast_col = f"{model}_{horizon}d"
+            if "tuned" in file_path:
+                forecast_col += "_tuned"
+            original_col = f"{model}_{horizon}d"
+            if original_col in df.columns and not df.empty:
+                df.rename(columns={original_col: forecast_col}, inplace=True)
             if forecast_col in df.columns and not df.empty:
                 df = df[['date', 'close'] + [forecast_col] +
                         [col for col in ['daily_sentiment', 'weekly_sentiment'] if col in df.columns]]
