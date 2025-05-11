@@ -31,9 +31,11 @@ for model in models:
             original_col = f"{model}_{horizon}d"
             if original_col in df.columns and not df.empty:
                 df.rename(columns={original_col: forecast_col}, inplace=True)
-            if forecast_col in df.columns and not df.empty:
+            if not dfs:
                 df = df[['date', 'close'] + [forecast_col] +
                         [col for col in ['daily_sentiment', 'weekly_sentiment'] if col in df.columns]]
+            else:
+                df = df[['date'] + [forecast_col]]
                 df = df.drop_duplicates(subset='date')
                 df.set_index('date', inplace=True)
 
