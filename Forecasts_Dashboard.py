@@ -132,7 +132,8 @@ if os.path.exists(rmse_path):
     # filter widgets
     st.markdown("**Filter RMSE Table:**")
     rmse_tickers = st.multiselect("Ticker(s)", tickers, default=tickers)
-    rmse_models = st.multiselect("Model(s)", models, default=models)
+    model_options = ['lstm', 'lstm_tuned', 'arima', 'arimax', 'xgboost']
+    rmse_models = st.multiselect("Model(s)", model_options, default=model_options)
     rmse_horizons = st.multiselect("Horizon(s)", horizons, default=horizons)
 
     filtered = df_rmse[
