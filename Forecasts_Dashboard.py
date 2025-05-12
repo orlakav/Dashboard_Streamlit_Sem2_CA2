@@ -36,18 +36,18 @@ for model in models:
                         [col for col in ['daily_sentiment', 'weekly_sentiment'] if col in df.columns]]
             else:
                 df = df[['date'] + [forecast_col]]
-                df = df.drop_duplicates(subset='date')
-                df.set_index('date', inplace=True)
+            df = df.drop_duplicates(subset='date')
+            df.set_index('date', inplace=True)
 
-                # Track the latest forecast date
-                last_forecast = df[forecast_col].dropna()
-                if not last_forecast.empty:
-                    last_date = last_forecast.index.max()
-                    if max_forecast_date is None or last_date > max_forecast_date:
-                        max_forecast_date = last_date
+            # Track the latest forecast date
+            last_forecast = df[forecast_col].dropna()
+            if not last_forecast.empty:
+                last_date = last_forecast.index.max()
+                if max_forecast_date is None or last_date > max_forecast_date:
+                    max_forecast_date = last_date
 
-                forecast_cols.append(forecast_col)
-                dfs.append(df)
+            forecast_cols.append(forecast_col)
+            dfs.append(df)
 
 # merge forecasts and truncate stock data
 if dfs:
