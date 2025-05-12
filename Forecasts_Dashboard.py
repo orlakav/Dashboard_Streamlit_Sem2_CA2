@@ -6,6 +6,7 @@ import glob
 
 st.set_page_config(page_title="Stock Forecast Dashboard", layout="wide")
 st.title("Stock Forecast Dashboard")
+st.caption("This dashboard compares forecasting models for Amazon, Apple, Tesla, Microsoft and Boeing using stock prices and twitter sentiment. Use the filters below to explore predictions across models and time horizons.")
 
 # ticker dropdown
 tickers = ['AAPL', 'AMZN', 'TSLA', 'MSFT', 'BA']
@@ -124,6 +125,7 @@ if show_sentiment_plot:
 
 # RMSE Table
 st.subheader("RMSE Scores")
+st.markdown("**Note:** Lower RMSE indicates better predictive performance.")
 
 rmse_path = "forecast_exports/rmse_summary.csv"
 if os.path.exists(rmse_path):
