@@ -1,0 +1,2 @@
+date,actual,forecast,ticker,model,horizon
+414,150.2239990234375,151.73843383089704,AMZN,sarimax,1

@@ -1,0 +1,2 @@
+date,actual,forecast,ticker,model,horizon
+2020-11-02,150.2239990234375,151.73860982523183,AMZN,arima,1
